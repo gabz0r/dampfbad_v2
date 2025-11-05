@@ -10,10 +10,17 @@
 #include "time.h"
 #include "wlan/wlan.h"
 
-#define VALID_COMMANDS "REQTIME,KEEPALIVE,HEAT,STOPHEAT,LIGHT,VENT,LISTWIFI,DISCWIFI,WIFISTAT,CONNECT,DISABLESLEEP"
+#define VALID_COMMANDS "REQTIME,KEEPALIVE,HEAT,STOPHEAT,LIGHT,VENT,LISTWIFI,DISCWIFI,WIFISTAT,CONNECT,DISABLESLEEP,PAGEMAIN,PAGEWIFI,PAGEKEYBD,PAGECLOCK"
 
 #define NTP "de.pool.ntp.org"
 #define TZ "WEST-1DWEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00"
+
+enum HmiPages {
+    PAGE_MAIN,
+    PAGE_WIFI,
+    PAGE_KEYBD,
+    PAGE_CLOCK
+};
 
 
 class HmiInterface {
@@ -31,6 +38,7 @@ public:
     void updateRtc();
     void setMaySleep(bool maySleep);
     void restart();
+    std::string time();
 
 private:
     HardwareSerial *hmiSerial;
@@ -40,6 +48,8 @@ private:
     unsigned long lastInteraction;
     bool maySleep;
     bool isSleeping;
+    HmiPages currentPage;
+    std::string internalTime;
 };
 
 

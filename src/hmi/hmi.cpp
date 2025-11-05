@@ -1,13 +1,14 @@
 #include "hmi.h"
 
 HmiInterface::HmiInterface() {
-    this->hmiSerial = new HardwareSerial(2);
+    this->hmiSerial = new HardwareSerial(1);
     this->hmiSerial->begin(9600, SERIAL_8N1, 18, 17);
     this->pollCallback = nullptr;
     this->lastRtcUpdate = millis();
     this->lastInteraction = millis();
     this->isSleeping = false;
     this->maySleep = true;
+    this->currentPage = PAGE_MAIN;
 }
 
 HmiInterface::~HmiInterface() {
@@ -72,7 +73,18 @@ void HmiInterface::process() {
             Serial.print("Valid: ");
             Serial.println(splits.at(0).c_str());
 
-            this->pollCallback(splits);
+            if(splits.at(0) == "PAGEMAIN") {
+                this->currentPage = PAGE_MAIN;
+            } else if(splits.at(0) == "PAGEWIFI") {
+                this->currentPage = PAGE_WIFI;
+            } else if(splits.at(0) == "PAGEKEYBD") {
+                this->currentPage = PAGE_KEYBD;
+            } else if(splits.at(0) == "PAGECLOCK") {
+                this->currentPage = PAGE_CLOCK;
+            } else {
+                this->pollCallback(splits);
+            }
+
             this->lastInteraction = millis();
             this->isSleeping = false;
         }
@@ -80,6 +92,8 @@ void HmiInterface::process() {
 }
 
 void HmiInterface::setAvailableNetworks(std::vector<std::string> networks) {
+    if(this->currentPage != PAGE_WIFI) return;
+
     this->sendCommand("dataWifiResult.clear()");
     for(std::string net : networks) {
         std::ostringstream insert;
@@ -89,6 +103,8 @@ void HmiInterface::setAvailableNetworks(std::vector<std::string> networks) {
 }
 
 void HmiInterface::setWifiStatusConnecting(std::string withSSID) {
+    if(this->currentPage != PAGE_WIFI) return;
+
     this->sendCommand("dataWifiResult.clear()");
     std::ostringstream insert;
     insert << "dataWifiResult.insert(\"Verbinde zu " << withSSID << "\")";
@@ -99,16 +115,19 @@ void HmiInterface::setWifiConnectionStatus(bool connected, bool navMain) {
     if(connected) {
         if(navMain) {
             this->sendCommand("page main");
-            delay(10);
+            delay(1000);
         }
 
         this->sendCommand("btnWifiPage.picc=4");
     }
     else {
-        this->sendCommand("dataWifiResult.clear()");
-        this->sendCommand("dataWifiResult.insert(\"Verbindungsfehler!\")");
-        delay(1000);
-        this->sendCommand("page main");
+        if(this->currentPage == PAGE_WIFI) {
+            this->sendCommand("dataWifiResult.clear()");
+            this->sendCommand("dataWifiResult.insert(\"Verbindungsfehler!\")");
+            this->sendCommand("page main");
+            delay(1000);
+        }
+
         this->sendCommand("btnWifiPage.picc=3");
     }
 }
@@ -145,10 +164,6 @@ void HmiInterface::updateRtc() {
     snprintf(hour, sizeof(hour), "%02d", timeinfo.tm_hour);
     snprintf(minute, sizeof(minute), "%02d", timeinfo.tm_min);
 
-    Serial.print("Set time to ");
-    Serial.print(hour);
-    Serial.print(minute);
-
     std::ostringstream insertRtc3;
     insertRtc3 << "rtc3=" << hour;
     this->sendCommand(insertRtc3.str());
@@ -157,25 +172,32 @@ void HmiInterface::updateRtc() {
     insertRtc4 << "rtc4=" << minute;
     this->sendCommand(insertRtc4.str());
 
-    std::ostringstream directH10;
-    directH10 << "txtTimeH10.txt=\"" << hour[0] << "\"";
-    this->sendCommand(directH10.str());
 
-    std::ostringstream directH1;
-    directH1 << "txtTimeH1.txt=\"" << hour[1] << "\"";
-    this->sendCommand(directH1.str());
+    std::ostringstream internalTime;
+    internalTime << hour[0] << hour[1] << minute[0] << minute[1];
+    this->internalTime = internalTime.str();
 
-    std::ostringstream directM10;
-    directM10 << "txtTimeM10.txt=\"" << minute[0] << "\"";
-    this->sendCommand(directM10.str());
+    if(this->currentPage == PAGE_MAIN) {
+        std::ostringstream clockMini;
+        clockMini << "txtClockMini.txt=\"" << hour << ":" << minute << "\"";
+        this->sendCommand(clockMini.str());
+    } else if(this->currentPage == PAGE_CLOCK) {
+        std::ostringstream directH10;
+        directH10 << "txtTimeH10.txt=\"" << hour[0] << "\"";
+        this->sendCommand(directH10.str());
 
-    std::ostringstream directM1;
-    directM1 << "txtTimeM1.txt=\"" << minute[1] << "\"";
-    this->sendCommand(directM1.str());
+        std::ostringstream directH1;
+        directH1 << "txtTimeH1.txt=\"" << hour[1] << "\"";
+        this->sendCommand(directH1.str());
 
-    std::ostringstream clockMini;
-    clockMini << "txtClockMini.txt=\"" << hour << ":" << minute << "\"";
-    this->sendCommand(clockMini.str());
+        std::ostringstream directM10;
+        directM10 << "txtTimeM10.txt=\"" << minute[0] << "\"";
+        this->sendCommand(directM10.str());
+
+        std::ostringstream directM1;
+        directM1 << "txtTimeM1.txt=\"" << minute[1] << "\"";
+        this->sendCommand(directM1.str());
+    }
 }
 
 void HmiInterface::setMaySleep(bool maySleep) {
@@ -184,4 +206,8 @@ void HmiInterface::setMaySleep(bool maySleep) {
 
 void HmiInterface::restart() {
     this->sendCommand("page main");
+}
+
+std::string HmiInterface::time() {
+    return this->internalTime;
 }

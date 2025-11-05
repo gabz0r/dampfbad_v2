@@ -5,6 +5,7 @@
 
 #include "wlan/wlan.h"
 #include "hmi/hmi.h"
+#include "sauna/sauna.h"
 
 #include<vector>
 #include <String>
@@ -21,6 +22,7 @@ public:
     static void proc_WIFISTAT(HmiInterface *hmi);
     static void proc_REQTIME(HmiInterface *hmi);
     static void proc_LIGHT(WlanController *wlan);
+    static void proc_HEAT(HmiInterface *hmi, SaunaController *sauna, std::vector<std::string> params);
 
     static void ext_CONNECTED(HmiInterface *hmi, bool navMain = true);
     static void ext_CONNECT_ERROR(HmiInterface *hmi, WlanController *wlan);

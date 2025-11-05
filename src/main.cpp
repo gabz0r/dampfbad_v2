@@ -7,9 +7,11 @@
 #include "wlan/wlan.h"
 #include "hmi/hmi.h"
 #include "hmi/hmi_worker.h"
+#include "sauna/sauna.h"
 
 WlanController *wlan;
 HmiInterface *hmi;
+SaunaController *sauna;
 
 void onNetworkScanResult(std::vector<std::string> networks);
 void onNetworkConnectResult(std::string ssid, bool success);
@@ -30,6 +32,8 @@ void setup() {
   hmi->attachCommandCallback(onHmiCommand);
   delay(100);
   hmi->restart();
+
+  sauna = new SaunaController();
 }
 
 uint8_t hmi_buf[16];
@@ -77,5 +81,7 @@ void onHmiCommand(std::vector<std::string> cmd) {
   }
   else if(cmd.at(0) == "LIGHT") {
     HmiWorker::proc_LIGHT(wlan);
+  } else if(cmd.at(0) == "HEAT") {
+    HmiWorker::proc_HEAT(hmi, sauna, cmd);
   }
 }

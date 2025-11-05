@@ -9,6 +9,7 @@
 #include <vector>
 #include <String>
 #include <HTTPClient.h>
+#include <Preferences.h>
 
 class WlanController {
 public:
@@ -32,6 +33,7 @@ private:
     unsigned long connectStartedMillis;
     std::string connectingTo;
     HTTPClient *httpClient;
+    Preferences *preferences;
 };
 
 #endif

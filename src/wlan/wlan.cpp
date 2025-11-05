@@ -9,6 +9,18 @@ WlanController::WlanController() {
     this->connectStartedMillis = 0;
     this->connectingTo = std::string();
     this->httpClient = new HTTPClient();
+    this->preferences = new Preferences();
+
+    this->preferences->begin("dampfbad", false);
+    std::string ssid(this->preferences->getString("ssid", "nval").c_str());
+    std::string key(this->preferences->getString("key").c_str());
+    this->preferences->end();
+
+    if(ssid != "nval") {
+        Serial.println(ssid.c_str());
+        Serial.println(key.c_str());
+        this->connect(ssid, key);
+    }
 
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
@@ -16,6 +28,7 @@ WlanController::WlanController() {
 
 WlanController::~WlanController() {
     delete(this->httpClient);
+    delete(this->preferences);
 }
 
 void WlanController::scanNetworksAsync() {
@@ -44,6 +57,10 @@ void WlanController::process() {
             this->wifiConnectResult(this->connectingTo, false);
             this->connectStartedMillis = 0;
             this->connectingTo = "";
+
+            this->preferences->begin("dampfbad", false);
+            this->preferences->clear();
+            this->preferences->end();
         }
 
         if(WiFi.status() == WL_CONNECTED) {
@@ -88,12 +105,23 @@ void WlanController::connect(std::string ssid, std::string key) {
     this->connectingTo = ssid;
     this->connectStartedMillis = millis();
     this->shouldScan = false;
+
+    this->preferences->begin("dampfbad", false);
+    this->preferences->clear();
+    this->preferences->putString("ssid", ssid.c_str());
+    this->preferences->putString("key", key.c_str());
+    this->preferences->end();
 }
 
 void WlanController::disconnect() {
     if(WiFi.status() == WL_CONNECTED) {
         WiFi.disconnect();
     }
+
+    this->preferences->begin("dampfbad", false);
+    this->preferences->clear();
+    this->preferences->end();
+    
     WiFi.setAutoReconnect(false);
 }
 
