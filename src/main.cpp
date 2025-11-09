@@ -18,6 +18,8 @@ void onNetworkConnectResult(std::string ssid, bool success);
 
 void onHmiCommand(std::vector<std::string> cmd);
 
+void processSerial();
+
 void setup() {
   Serial.begin(9600);
 
@@ -42,8 +44,11 @@ void loop() {
 
   wlan->process();
   hmi->process();
+  sauna->process(hmi);
 
-  delay(1);
+  processSerial();
+
+  delay(100);
 }
 
 void onNetworkScanResult(std::vector<std::string> networks) {
@@ -83,5 +88,16 @@ void onHmiCommand(std::vector<std::string> cmd) {
     HmiWorker::proc_LIGHT(wlan);
   } else if(cmd.at(0) == "HEAT") {
     HmiWorker::proc_HEAT(hmi, sauna, cmd);
+  } else if(cmd.at(0) == "STOPHEAT") {
+    HmiWorker::proc_STOPHEAT(hmi, sauna);
+  }
+}
+
+void processSerial() {
+  if(Serial.available()) {
+    String cmd = Serial.readString();
+    if(cmd == "reset") {
+      ESP.restart();
+    }
   }
 }

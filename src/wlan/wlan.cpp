@@ -16,14 +16,15 @@ WlanController::WlanController() {
     std::string key(this->preferences->getString("key").c_str());
     this->preferences->end();
 
+    WiFi.mode(WIFI_STA);
+
     if(ssid != "nval") {
         Serial.println(ssid.c_str());
         Serial.println(key.c_str());
         this->connect(ssid, key);
+    } else {
+        WiFi.disconnect();
     }
-
-    WiFi.mode(WIFI_STA);
-    WiFi.disconnect();
 }
 
 WlanController::~WlanController() {
@@ -101,6 +102,7 @@ void WlanController::process() {
 }
 
 void WlanController::connect(std::string ssid, std::string key) {
+    Serial.printf("Connecting to %s with key %s", ssid.c_str(), key.c_str());
     WiFi.begin(ssid.c_str(), key.c_str());
     this->connectingTo = ssid;
     this->connectStartedMillis = millis();
@@ -121,7 +123,7 @@ void WlanController::disconnect() {
     this->preferences->begin("dampfbad", false);
     this->preferences->clear();
     this->preferences->end();
-    
+
     WiFi.setAutoReconnect(false);
 }
 

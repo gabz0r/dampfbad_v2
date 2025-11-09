@@ -63,11 +63,14 @@ void HmiWorker::proc_LIGHT(WlanController *wlan) {
 }
 
 void HmiWorker::proc_HEAT(HmiInterface *hmi, SaunaController *sauna, std::vector<std::string> params) {
-    hmi->sendCommand("btnSteamStart.picc=2");
     int tempC = atoi(params.at(1).c_str());
     int durationM = atoi(params.at(2).c_str());
 
     sauna->startSauna(tempC, durationM, hmi);
+}
+
+void HmiWorker::proc_STOPHEAT(HmiInterface *hmi, SaunaController *sauna) {
+    sauna->stopSauna(hmi);
 }
 
 

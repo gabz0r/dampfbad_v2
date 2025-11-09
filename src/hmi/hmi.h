@@ -39,6 +39,9 @@ public:
     void setMaySleep(bool maySleep);
     void restart();
     std::string time();
+    void updateTemps(double ambient, double sauna);
+    void updateHeatButton(bool active);
+    void setRemainingMinutes(int remaining);
 
 private:
     HardwareSerial *hmiSerial;

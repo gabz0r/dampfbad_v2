@@ -23,6 +23,7 @@ public:
     static void proc_REQTIME(HmiInterface *hmi);
     static void proc_LIGHT(WlanController *wlan);
     static void proc_HEAT(HmiInterface *hmi, SaunaController *sauna, std::vector<std::string> params);
+    static void proc_STOPHEAT(HmiInterface *hmi, SaunaController *sauna);
 
     static void ext_CONNECTED(HmiInterface *hmi, bool navMain = true);
     static void ext_CONNECT_ERROR(HmiInterface *hmi, WlanController *wlan);

@@ -134,7 +134,13 @@ void HmiInterface::setWifiConnectionStatus(bool connected, bool navMain) {
 
 void HmiInterface::gotoSleep() {
     if(!isSleeping && maySleep) {
-        this->sendCommand("dim=10");
+        if(atoi(this->internalTime.c_str()) > 0 && 
+           atoi(this->internalTime.c_str()) < 630) {
+            this->sendCommand("dim=10");
+        } else {
+            this->sendCommand("dim=50");
+        }
+
         this->sendCommand("page clock");
         this->isSleeping = true;
     }
@@ -164,6 +170,7 @@ void HmiInterface::updateRtc() {
     snprintf(hour, sizeof(hour), "%02d", timeinfo.tm_hour);
     snprintf(minute, sizeof(minute), "%02d", timeinfo.tm_min);
 
+
     std::ostringstream insertRtc3;
     insertRtc3 << "rtc3=" << hour;
     this->sendCommand(insertRtc3.str());
@@ -176,6 +183,14 @@ void HmiInterface::updateRtc() {
     std::ostringstream internalTime;
     internalTime << hour[0] << hour[1] << minute[0] << minute[1];
     this->internalTime = internalTime.str();
+
+    Serial.print("internal time is ");
+    Serial.println(this->internalTime.c_str());
+
+    if(this->internalTime == "0300") {
+        Serial.println("ciao, daily restart...");
+        ESP.restart();
+    }
 
     if(this->currentPage == PAGE_MAIN) {
         std::ostringstream clockMini;
@@ -210,4 +225,44 @@ void HmiInterface::restart() {
 
 std::string HmiInterface::time() {
     return this->internalTime;
+}
+
+void HmiInterface::updateTemps(double ambient, double sauna) {
+    if(this->currentPage == PAGE_MAIN) {
+
+        char bufA[8];
+        char bufS[8];
+
+        snprintf(bufA, sizeof(bufA), "%.1f", ambient);
+        snprintf(bufS, sizeof(bufS), "%.1f", sauna);
+
+        for (int i = 0; bufA[i] != '\0'; ++i) {
+            if (bufA[i] == '.') bufA[i] = ',';
+        }
+        for (int i = 0; bufS[i] != '\0'; ++i) {
+            if (bufS[i] == '.') bufS[i] = ',';
+        }
+
+        std::stringstream s_cmdA;
+        s_cmdA << "txtRoomTemp.txt=\"" << bufA << "\"";
+        this->sendCommand(s_cmdA.str());
+
+        std::stringstream s_cmdS;
+        s_cmdS << "txtShowerTemp.txt=\"" << bufS << "\"";
+        this->sendCommand(s_cmdS.str());
+    }
+}
+
+void HmiInterface::updateHeatButton(bool active) {
+    if(active) {
+        this->sendCommand("btnSteamStart.picc=2");
+    } else {
+        this->sendCommand("btnSteamStart.picc=0");
+    }
+}
+
+void HmiInterface::setRemainingMinutes(int remaining) {
+    std::stringstream s_remaining;
+    s_remaining << "txtDuration.txt=\"" << remaining << "\"";
+    this->sendCommand(s_remaining.str());
 }

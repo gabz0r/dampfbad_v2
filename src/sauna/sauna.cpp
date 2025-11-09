@@ -20,7 +20,7 @@ SaunaController::SaunaController() {
     pinMode(RS485_RE, OUTPUT);
 
     digitalWrite(RS485_OE, LOW); // inactive low
-    digitalWrite(RS485_RE, HIGH); // inactive high
+    digitalWrite(RS485_RE, LOW); // active low
     this->controlPacket = std::array<uint8_t, 19> { 
         START_PACKET_BYTE, 
         0x31, 
@@ -46,11 +46,39 @@ SaunaController::SaunaController() {
     this->steamTimer = timerBegin(0, 80, true);
     timerAttachInterrupt(this->steamTimer, &onTimer, true);
     timerAlarmWrite(this->steamTimer, 60000000, true);
+
+    this->lastTempUpdate = millis();
+    this->lastRemMinUpdate = millis();
+
+    this->thAmbient = new SmoothThermistor(new NTC_Thermistor_ESP32(
+        TEMP_J3_AMBIENT,
+        REFERENCE_RESISTANCE,
+        NOMINAL_RESISTANCE_AMBIENT,
+        NOMINAL_TEMPERATURE,
+        B_VALUE,
+        ESP32_ADC_VREF_MV,
+        ESP32_ANALOG_RESOLUTION
+    ), SMOOTHING_FACTOR);
+
+    this->thSauna = new SmoothThermistor(new NTC_Thermistor_ESP32(
+        TEMP_J6_STEAM,
+        REFERENCE_RESISTANCE,
+        NOMINAL_RESISTANCE_AMBIENT,
+        NOMINAL_TEMPERATURE,
+        B_VALUE,
+        ESP32_ADC_VREF_MV,
+        ESP32_ANALOG_RESOLUTION
+    ), SMOOTHING_FACTOR);
+
+    this->heatLocal = false;
+    this->heatRemote = false;
 }
 
 bool SaunaController::startSauna(int minutes, int degrees, HmiInterface *hmi) {
-    digitalWrite(RS485_OE, HIGH);
     std::string now = hmi->time();
+
+    this->fixedDuration = minutes;
+    this->fixedTemp = degrees;
 
     duration = minutes;
 
@@ -66,13 +94,87 @@ bool SaunaController::startSauna(int minutes, int degrees, HmiInterface *hmi) {
     controlPacket[12] = now[1];
     controlPacket[13] = now[2];
     controlPacket[14] = now[3];
-Serial.println("writing sauna packet");
+
+    Serial.println("send start packet");
+    digitalWrite(RS485_RE, HIGH);
+    delay(10);
     digitalWrite(RS485_OE, HIGH);
     rs485Sauna->write(controlPacket.data(), 19);
     rs485Sauna->flush();
     digitalWrite(RS485_OE, LOW);
+    delay(10);
+    digitalWrite(RS485_RE, LOW);
 
-    timerAlarmEnable(this->steamTimer);
+    this->heatLocal = true;
 
     return true;
+}
+
+void SaunaController::process(HmiInterface *hmi) {
+    if (millis() - this->lastTempUpdate > TEMP_UPD_INTERVAL_MS) {
+        this->lastTempUpdate = millis();
+        double tAmbientInC = this->thAmbient->readCelsius() - CALIBRATION_OFFSET_C;
+        double tSaunaC = this->thSauna->readCelsius() - CALIBRATION_OFFSET_C;
+        hmi->updateTemps(tAmbientInC, tSaunaC);
+    }
+
+    if (millis() - this->lastRemMinUpdate > REM_MIN_UPD_INTERVAL_MS && this->heatLocal && this->heatRemote) {
+        this->lastRemMinUpdate = millis();
+        hmi->setRemainingMinutes(duration);
+    }
+
+    if(this->heatLocal && this->heatRemote && duration <= 0) {
+        this->stopSauna(hmi);
+    }
+    
+    unsigned char acknowledgePacket[14] = {};
+
+    while(this->rs485Sauna->available()) {
+        this->rs485Sauna->readBytesUntil(END_PACKET_BYTE, acknowledgePacket, 14);
+        acknowledgePacket[13] = END_PACKET_BYTE;
+
+
+        Serial.print("Ack = (s->c) ");
+        Serial.write(acknowledgePacket, 14);
+        Serial.println();
+
+        if(this->heatLocal && !this->heatRemote) {
+            this->heatRemote = true;
+            hmi->updateHeatButton(true);
+            timerAlarmEnable(this->steamTimer);
+        }
+        else if(!this->heatLocal && this->heatRemote) {
+            hmi->updateHeatButton(false);
+            hmi->setRemainingMinutes(25);
+            timerAlarmDisable(this->steamTimer);
+        }
+    }
+}
+
+void SaunaController::stopSauna(HmiInterface *hmi) {
+    std::string now = hmi->time();
+
+    std::stringstream ss;
+    std::string targetTemp;
+    ss << this->fixedTemp;
+    ss >> targetTemp;
+
+    controlPacket[6] = 0x6F; // of, 0x4F = on
+    controlPacket[9] = targetTemp[0];
+    controlPacket[10] = targetTemp[1];
+    controlPacket[11] = now[0];
+    controlPacket[12] = now[1];
+    controlPacket[13] = now[2];
+    controlPacket[14] = now[3];
+
+    digitalWrite(RS485_RE, HIGH);
+    delay(10);
+    digitalWrite(RS485_OE, HIGH);
+    rs485Sauna->write(controlPacket.data(), 19);
+    rs485Sauna->flush();
+    digitalWrite(RS485_OE, LOW);    
+    delay(10);
+    digitalWrite(RS485_RE, LOW);
+
+    this->heatLocal = false;
 }
