@@ -1,7 +1,6 @@
 #include "hmi_worker.h"
 bool HmiWorker::isWifiConnecting = false;
 
-
 void HmiWorker::proc_LISTWIFI(WlanController *wlan, HmiInterface *hmi) {
     if(HmiWorker::isWifiConnecting) return;
 
@@ -11,13 +10,13 @@ void HmiWorker::proc_LISTWIFI(WlanController *wlan, HmiInterface *hmi) {
 }
 
 void HmiWorker::proc_DISCWIFI(WlanController *wlan, HmiInterface *hmi) {
-    Serial.println("DISCWIFI");
+    WebSerial.println("DISCWIFI");
     wlan->disconnect();
     hmi->setWifiConnectionStatus(false);
 }
 
 void HmiWorker::proc_CONNECT(WlanController *wlan, HmiInterface *hmi, std::vector<std::string> cmd) {
-    Serial.println("CONNECT");
+    WebSerial.println("CONNECT");
     hmi->sendCommand("input.txt=\"\"");
     hmi->sendCommand("show.txt=\"\"");
 
@@ -32,16 +31,16 @@ void HmiWorker::proc_CONNECT(WlanController *wlan, HmiInterface *hmi, std::vecto
     // as the hmi cursor is just a cycled append of | character, we need to potentially remove it
 
     std::size_t start_pos = key.find("|", start_pos);
-    Serial.print("index of | =");
-    Serial.println(start_pos);
+    WebSerial.print("index of | =");
+    WebSerial.println(start_pos);
     if(start_pos != std::string::npos) {
-        Serial.print("remove ");
-        Serial.println(key.back());
+        WebSerial.print("remove ");
+        WebSerial.println(key.back());
         key.pop_back();
     }
 
-    Serial.print("key is now ");
-    Serial.println(key.c_str());
+    WebSerial.print("key is now ");
+    WebSerial.println(key.c_str());
 
     wlan->connect(ssid, key);
     hmi->setWifiStatusConnecting(ssid);
@@ -62,6 +61,10 @@ void HmiWorker::proc_LIGHT(WlanController *wlan) {
     wlan->getRequest(SHELLY_LIGHT);
 }
 
+void HmiWorker::proc_VENT(WlanController *wlan) {
+    wlan->getRequest(SHELLY_VENT);
+}
+
 void HmiWorker::proc_HEAT(HmiInterface *hmi, SaunaController *sauna, std::vector<std::string> params) {
     int tempC = atoi(params.at(1).c_str());
     int durationM = atoi(params.at(2).c_str());
@@ -76,7 +79,7 @@ void HmiWorker::proc_STOPHEAT(HmiInterface *hmi, SaunaController *sauna) {
 
 
 void HmiWorker::ext_CONNECTED(HmiInterface *hmi, bool navMain) {
-    Serial.println("CONNECTED");
+    WebSerial.println("CONNECTED");
     hmi->setMaySleep(true);
 
     hmi->setWifiConnectionStatus(true, navMain);
@@ -84,7 +87,7 @@ void HmiWorker::ext_CONNECTED(HmiInterface *hmi, bool navMain) {
 }
 
 void HmiWorker::ext_CONNECT_ERROR(HmiInterface *hmi, WlanController *wlan) {
-    Serial.println("CONNECT ERROR");
+    WebSerial.println("CONNECT ERROR");
 
     hmi->setWifiConnectionStatus(false);
     wlan->disconnect();

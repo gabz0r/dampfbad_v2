@@ -1,7 +1,12 @@
 #include <Arduino.h>
 #include <HardwareSerial.h>
 
-#include<vector>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <WebSerial.h>
+#include <ElegantOTA.h>
+
+#include <vector>
 #include <String>
 
 #include "wlan/wlan.h"
@@ -13,6 +18,9 @@ WlanController *wlan;
 HmiInterface *hmi;
 SaunaController *sauna;
 
+AsyncWebServer server(80);
+
+
 void onNetworkScanResult(std::vector<std::string> networks);
 void onNetworkConnectResult(std::string ssid, bool success);
 
@@ -20,11 +28,16 @@ void onHmiCommand(std::vector<std::string> cmd);
 
 void processSerial();
 
+void initOTA();
+void onOTAStart();
+void onOTAProgress(size_t current, size_t final);
+void onOTAEnd(bool success);
+
 void setup() {
   Serial.begin(9600);
 
   delay(1000);
-  Serial.println("Hello world");
+  WebSerial.println("Hello world");
   
   wlan = new WlanController();
   wlan->attachScanResultCallback(onNetworkScanResult);
@@ -48,7 +61,8 @@ void loop() {
 
   processSerial();
 
-  delay(100);
+  ElegantOTA.loop();
+  WebSerial.loop();
 }
 
 void onNetworkScanResult(std::vector<std::string> networks) {
@@ -57,10 +71,13 @@ void onNetworkScanResult(std::vector<std::string> networks) {
 
 void onNetworkConnectResult(std::string ssid, bool success) {
   if(success) {
-    Serial.printf("connected to %s\n", ssid.c_str());
+    WebSerial.printf("connected to %s\n", ssid.c_str());
     HmiWorker::ext_CONNECTED(hmi);
+    initOTA();
+    WebSerial.begin(&server);
+
   } else {
-    Serial.println("connect failed");
+    WebSerial.println("connect failed");
     HmiWorker::ext_CONNECT_ERROR(hmi, wlan);
   }
 }
@@ -86,7 +103,10 @@ void onHmiCommand(std::vector<std::string> cmd) {
   }
   else if(cmd.at(0) == "LIGHT") {
     HmiWorker::proc_LIGHT(wlan);
-  } else if(cmd.at(0) == "HEAT") {
+  } else if(cmd.at(0) == "VENT") {
+    HmiWorker::proc_VENT(wlan);
+  }
+  else if(cmd.at(0) == "HEAT") {
     HmiWorker::proc_HEAT(hmi, sauna, cmd);
   } else if(cmd.at(0) == "STOPHEAT") {
     HmiWorker::proc_STOPHEAT(hmi, sauna);
@@ -100,4 +120,28 @@ void processSerial() {
       ESP.restart();
     }
   }
+}
+
+void initOTA() {
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "Hi! I am ESP32.");
+  });
+
+  ElegantOTA.begin(&server);
+
+  ElegantOTA.onStart(onOTAStart);
+  ElegantOTA.onProgress(onOTAProgress);
+  ElegantOTA.onEnd(onOTAEnd);
+
+  server.begin();
+  WebSerial.println("HTTP server started");
+}
+
+void onOTAStart() {
+}
+
+void onOTAProgress(size_t current, size_t final) {
+}
+
+void onOTAEnd(bool success) {
 }

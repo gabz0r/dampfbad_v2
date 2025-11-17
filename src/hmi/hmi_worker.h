@@ -1,7 +1,8 @@
 #ifndef HMI_WORKER_H
 #define HMI_WORKER_H
 
-#define SHELLY_LIGHT "http://192.168.178.152/relay/0?turn=on"
+#define SHELLY_VENT "http://192.168.178.152/relay/0?turn=on"
+#define SHELLY_LIGHT "http://192.168.178.152/relay/1?turn=on"
 
 #include "wlan/wlan.h"
 #include "hmi/hmi.h"
@@ -11,6 +12,7 @@
 #include <String>
 #include <sstream>
 #include <iostream>
+#include <WebSerial.h>
 
 class HmiWorker {
 public:
@@ -22,6 +24,7 @@ public:
     static void proc_WIFISTAT(HmiInterface *hmi);
     static void proc_REQTIME(HmiInterface *hmi);
     static void proc_LIGHT(WlanController *wlan);
+    static void proc_VENT(WlanController *wlan);
     static void proc_HEAT(HmiInterface *hmi, SaunaController *sauna, std::vector<std::string> params);
     static void proc_STOPHEAT(HmiInterface *hmi, SaunaController *sauna);
 

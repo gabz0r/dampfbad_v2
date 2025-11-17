@@ -10,6 +10,7 @@
 #include <String>
 #include <HTTPClient.h>
 #include <Preferences.h>
+#include <WebSerial.h>
 
 class WlanController {
 public:

@@ -34,6 +34,7 @@
 #include <Thermistor.h>
 #include <NTC_Thermistor.h>
 #include <SmoothThermistor.h>
+#include <WebSerial.h>
 
 #include "hmi/hmi.h"
 

@@ -3,19 +3,32 @@
 volatile int duration = 0;
 portMUX_TYPE saunaMux = portMUX_INITIALIZER_UNLOCKED;
 
+volatile bool beepProgress = false;
+volatile bool beepFinished = false;
+
+void printBytesHex(const uint8_t* data, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        if (data[i] < 0x10) WebSerial.print('0'); // leading zero
+        WebSerial.print(data[i], HEX);
+        if (i < len - 1) WebSerial.print(' '); // space between bytes
+    }
+}
+
 void IRAM_ATTR onTimer() {
-    Serial.print("TIMER REMAINING");
     portENTER_CRITICAL_ISR(&saunaMux);
     duration--;
+    if(duration % 5 == 0) {
+        beepProgress = true;
+    } else if(duration == 0) {
+        beepFinished = true;
+    }
     portEXIT_CRITICAL_ISR(&saunaMux);
-
-    Serial.println(duration);
 } 
 
 
 SaunaController::SaunaController() {
     this->rs485Sauna = new HardwareSerial(2);
-    this->rs485Sauna->begin(9600, SERIAL_8N1, 2, 1);
+    this->rs485Sauna->begin(4800, SERIAL_8N1, 2, 1);
     pinMode(RS485_OE, OUTPUT);
     pinMode(RS485_RE, OUTPUT);
 
@@ -95,10 +108,10 @@ bool SaunaController::startSauna(int minutes, int degrees, HmiInterface *hmi) {
     controlPacket[13] = now[2];
     controlPacket[14] = now[3];
 
-    Serial.println("send start packet");
     digitalWrite(RS485_RE, HIGH);
     delay(10);
     digitalWrite(RS485_OE, HIGH);
+    printBytesHex(controlPacket.data(), 19);
     rs485Sauna->write(controlPacket.data(), 19);
     rs485Sauna->flush();
     digitalWrite(RS485_OE, LOW);
@@ -134,9 +147,9 @@ void SaunaController::process(HmiInterface *hmi) {
         acknowledgePacket[13] = END_PACKET_BYTE;
 
 
-        Serial.print("Ack = (s->c) ");
+        WebSerial.print("Ack = (s->c) ");
         Serial.write(acknowledgePacket, 14);
-        Serial.println();
+        WebSerial.println();
 
         if(this->heatLocal && !this->heatRemote) {
             this->heatRemote = true;
@@ -170,6 +183,8 @@ void SaunaController::stopSauna(HmiInterface *hmi) {
     digitalWrite(RS485_RE, HIGH);
     delay(10);
     digitalWrite(RS485_OE, HIGH);
+    printBytesHex(controlPacket.data(), 19);
+
     rs485Sauna->write(controlPacket.data(), 19);
     rs485Sauna->flush();
     digitalWrite(RS485_OE, LOW);    

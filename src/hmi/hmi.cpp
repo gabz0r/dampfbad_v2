@@ -1,5 +1,8 @@
 #include "hmi.h"
 
+extern bool beepProgress;
+extern bool beepFinished;
+
 HmiInterface::HmiInterface() {
     this->hmiSerial = new HardwareSerial(1);
     this->hmiSerial->begin(9600, SERIAL_8N1, 18, 17);
@@ -9,6 +12,9 @@ HmiInterface::HmiInterface() {
     this->isSleeping = false;
     this->maySleep = true;
     this->currentPage = PAGE_MAIN;
+    this->toneStart = 0;
+    this->toneDuration = 0;
+    pinMode(PIEZO, OUTPUT);
 }
 
 HmiInterface::~HmiInterface() {
@@ -16,7 +22,7 @@ HmiInterface::~HmiInterface() {
 }
 
 void HmiInterface::sendCommand(std::string cmdStr) {
-    Serial.println(cmdStr.c_str());
+    WebSerial.println(cmdStr.c_str());
     this->hmiSerial->write(cmdStr.c_str());
     this->hmiSerial->write(0xFF);
     this->hmiSerial->write(0xFF);
@@ -28,14 +34,30 @@ void HmiInterface::attachCommandCallback(void (*callback)(std::vector<std::strin
 }
 
 void HmiInterface::process() {
+    if(beepProgress) {
+        beepProgress = false;
+        this->tone(300);
+    }
+
+    if(beepFinished) {
+        beepFinished = false;
+        this->tone(300);
+        delay(500);
+        this->tone(300);
+        delay(500);
+        this->tone(300);
+    }
+
     if(millis() - lastInteraction > 120000) gotoSleep();
     if(millis() - lastRtcUpdate > 30000) updateRtc();
+
+    this->checkToneEnd();
 
     uint16_t available = this->hmiSerial->available();
     if(available > 0 && this->pollCallback) {
         String cmd = hmiSerial->readStringUntil(';');
-        Serial.print("CMD=");
-        Serial.println(cmd);
+        WebSerial.print("CMD=");
+        WebSerial.println(cmd);
 
         //verify and extract command
         std::vector<std::string> splits;
@@ -44,9 +66,9 @@ void HmiInterface::process() {
 
         while (std::getline(sstream, p, ':')) {
             splits.push_back(p);
-            Serial.print("pushing ");
+            WebSerial.print("pushing ");
             std::string dbg("\"" + p + "\"");
-            Serial.println(dbg.c_str());
+            WebSerial.println(dbg.c_str());
         }
 
         int startingIndex = 0;
@@ -60,18 +82,18 @@ void HmiInterface::process() {
         }
         if(startingIndex == splits.size()) return;
 
-        Serial.print("starting index is now = ");
-        Serial.println(startingIndex);
+        WebSerial.print("starting index is now = ");
+        WebSerial.println(startingIndex);
 
         if(startingIndex > 0) { 
             splits.erase(splits.begin(), splits.begin() + startingIndex );
-            Serial.print("new first element");
-            Serial.println(splits.at(0).c_str());
+            WebSerial.print("new first element");
+            WebSerial.println(splits.at(0).c_str());
         }
 
         if(splits.size() > 0 && validCommands.find(splits.at(0)) != std::string::npos) {
-            Serial.print("Valid: ");
-            Serial.println(splits.at(0).c_str());
+            WebSerial.print("Valid: ");
+            WebSerial.println(splits.at(0).c_str());
 
             if(splits.at(0) == "PAGEMAIN") {
                 this->currentPage = PAGE_MAIN;
@@ -151,7 +173,7 @@ void HmiInterface::updateRtc() {
     this->lastRtcUpdate = millis();
     
     if(!WlanController::isConnected()) {
-        Serial.println("Cannot obtain time, disconnected!");
+        WebSerial.println("Cannot obtain time, disconnected!");
         return;
     }
 
@@ -159,7 +181,7 @@ void HmiInterface::updateRtc() {
     configTzTime(TZ, NTP); 
 
     if(!getLocalTime(&timeinfo)){
-        Serial.println("Failed to obtain time!");
+        WebSerial.println("Failed to obtain time!");
         return;
     }
 
@@ -184,11 +206,11 @@ void HmiInterface::updateRtc() {
     internalTime << hour[0] << hour[1] << minute[0] << minute[1];
     this->internalTime = internalTime.str();
 
-    Serial.print("internal time is ");
-    Serial.println(this->internalTime.c_str());
+    WebSerial.print("internal time is ");
+    WebSerial.println(this->internalTime.c_str());
 
     if(this->internalTime == "0300") {
-        Serial.println("ciao, daily restart...");
+        WebSerial.println("ciao, daily restart...");
         ESP.restart();
     }
 
@@ -265,4 +287,18 @@ void HmiInterface::setRemainingMinutes(int remaining) {
     std::stringstream s_remaining;
     s_remaining << "txtDuration.txt=\"" << remaining << "\"";
     this->sendCommand(s_remaining.str());
+}
+
+void HmiInterface::tone(unsigned long duration_ms) {
+    this->toneStart = millis();
+    this->toneDuration = duration_ms;
+    digitalWrite(PIEZO, HIGH);
+}
+
+void HmiInterface::checkToneEnd() {
+    if(this->toneStart != 0 && millis() - this->toneStart > this->toneDuration) {
+        digitalWrite(PIEZO, LOW);
+        this->toneStart = 0;
+        this->toneDuration = 0;
+    }
 }

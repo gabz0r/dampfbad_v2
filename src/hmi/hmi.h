@@ -6,6 +6,7 @@
 #include <String>
 #include <sstream>
 #include <vector>
+#include <WebSerial.h>
 
 #include "time.h"
 #include "wlan/wlan.h"
@@ -14,6 +15,8 @@
 
 #define NTP "de.pool.ntp.org"
 #define TZ "WEST-1DWEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00"
+
+#define PIEZO 38
 
 enum HmiPages {
     PAGE_MAIN,
@@ -42,8 +45,12 @@ public:
     void updateTemps(double ambient, double sauna);
     void updateHeatButton(bool active);
     void setRemainingMinutes(int remaining);
+    void tone(unsigned long duration_ms);
 
 private:
+
+    void checkToneEnd();
+
     HardwareSerial *hmiSerial;
     void (*pollCallback)(std::vector<std::string>);
     char buffer[512];
@@ -53,6 +60,8 @@ private:
     bool isSleeping;
     HmiPages currentPage;
     std::string internalTime;
+    unsigned long toneStart;
+    unsigned long toneDuration;
 };
 
 

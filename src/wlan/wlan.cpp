@@ -19,8 +19,8 @@ WlanController::WlanController() {
     WiFi.mode(WIFI_STA);
 
     if(ssid != "nval") {
-        Serial.println(ssid.c_str());
-        Serial.println(key.c_str());
+        WebSerial.println(ssid.c_str());
+        WebSerial.println(key.c_str());
         this->connect(ssid, key);
     } else {
         WiFi.disconnect();
@@ -73,7 +73,7 @@ void WlanController::process() {
     }
 
     if(this->shouldScan && currentMillis - lastScanMillis > SCAN_INTERVAL_MS) {
-        Serial.println("scan...");
+        WebSerial.println("scan...");
         WiFi.scanNetworks(true);
         lastScanMillis = millis();
     }
@@ -102,7 +102,7 @@ void WlanController::process() {
 }
 
 void WlanController::connect(std::string ssid, std::string key) {
-    Serial.printf("Connecting to %s with key %s", ssid.c_str(), key.c_str());
+    WebSerial.printf("Connecting to %s with key %s", ssid.c_str(), key.c_str());
     WiFi.begin(ssid.c_str(), key.c_str());
     this->connectingTo = ssid;
     this->connectStartedMillis = millis();
