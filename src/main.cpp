@@ -83,6 +83,12 @@ void onNetworkConnectResult(std::string ssid, bool success) {
 }
 
 void onHmiCommand(std::vector<std::string> cmd) {
+
+  WebSerial.print("Executing ");
+  for(std::string c : cmd) {
+    WebSerial.printf("%s,", c.c_str());
+  }
+
   if(cmd.at(0) == "LISTWIFI") {
     HmiWorker::proc_LISTWIFI(wlan, hmi);
   }

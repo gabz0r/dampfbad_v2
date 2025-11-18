@@ -69,7 +69,7 @@ void HmiWorker::proc_HEAT(HmiInterface *hmi, SaunaController *sauna, std::vector
     int tempC = atoi(params.at(1).c_str());
     int durationM = atoi(params.at(2).c_str());
 
-    sauna->startSauna(tempC, durationM, hmi);
+    sauna->startSauna(durationM, tempC, hmi);
 }
 
 void HmiWorker::proc_STOPHEAT(HmiInterface *hmi, SaunaController *sauna) {

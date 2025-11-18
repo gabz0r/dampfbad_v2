@@ -45,7 +45,7 @@ extern portMUX_TYPE saunaMux;
 class SaunaController {
 public:
     SaunaController();
-    bool startSauna(int minues, int degrees, HmiInterface *hmi);
+    bool startSauna(int minutes, int degrees, HmiInterface *hmi);
     void process(HmiInterface *hmi);
     void stopSauna(HmiInterface *hmi);
 

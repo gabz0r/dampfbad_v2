@@ -100,6 +100,10 @@ bool SaunaController::startSauna(int minutes, int degrees, HmiInterface *hmi) {
     ss << degrees;
     ss >> targetTemp;
 
+    WebSerial.printf("Setting target temp to %s C\n", targetTemp);
+    WebSerial.flush();
+    WebSerial.printf("Char representation: %s %s", targetTemp[0], targetTemp[1]);
+
     controlPacket[6] = 0x4F; // on, 0x6F = off
     controlPacket[9] = targetTemp[0];
     controlPacket[10] = targetTemp[1];
