@@ -1,8 +1,5 @@
 #include "hmi.h"
 
-extern bool beepProgress;
-extern bool beepFinished;
-
 HmiInterface::HmiInterface() {
     this->hmiSerial = new HardwareSerial(1);
     this->hmiSerial->begin(9600, SERIAL_8N1, 18, 17);
@@ -34,20 +31,6 @@ void HmiInterface::attachCommandCallback(void (*callback)(std::vector<std::strin
 }
 
 void HmiInterface::process() {
-    if(beepProgress) {
-        beepProgress = false;
-        this->tone(300);
-    }
-
-    if(beepFinished) {
-        beepFinished = false;
-        this->tone(300);
-        delay(500);
-        this->tone(300);
-        delay(500);
-        this->tone(300);
-    }
-
     if(millis() - lastInteraction > 120000) gotoSleep();
     if(millis() - lastRtcUpdate > 30000) updateRtc();
 
@@ -58,6 +41,8 @@ void HmiInterface::process() {
         String cmd = hmiSerial->readStringUntil(';');
         WebSerial.print("CMD=");
         WebSerial.println(cmd);
+        WebSerial.flush();
+        delay(200);
 
         //verify and extract command
         std::vector<std::string> splits;

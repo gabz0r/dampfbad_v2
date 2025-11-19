@@ -14,6 +14,8 @@
 #include <iostream>
 #include <WebSerial.h>
 
+class SaunaController; // Forward declaration
+
 class HmiWorker {
 public:
     static void proc_LISTWIFI(WlanController *wlan, HmiInterface *hmi);

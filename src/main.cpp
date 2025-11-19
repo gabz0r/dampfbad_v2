@@ -48,7 +48,7 @@ void setup() {
   delay(100);
   hmi->restart();
 
-  sauna = new SaunaController();
+  sauna = new SaunaController(hmi, wlan);
 }
 
 uint8_t hmi_buf[16];
@@ -57,7 +57,7 @@ void loop() {
 
   wlan->process();
   hmi->process();
-  sauna->process(hmi);
+  sauna->process();
 
   processSerial();
 

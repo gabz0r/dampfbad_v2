@@ -66,14 +66,15 @@ void HmiWorker::proc_VENT(WlanController *wlan) {
 }
 
 void HmiWorker::proc_HEAT(HmiInterface *hmi, SaunaController *sauna, std::vector<std::string> params) {
-    int tempC = atoi(params.at(1).c_str());
-    int durationM = atoi(params.at(2).c_str());
+    WebSerial.println("HEAT at WORKER");
+    WebSerial.printf("%s %s %s", params.at(0).c_str(), params.at(1).c_str(), params.at(2).c_str());
+    WebSerial.flush();
 
-    sauna->startSauna(durationM, tempC, hmi);
+    sauna->startSauna(params.at(2), params.at(1));
 }
 
 void HmiWorker::proc_STOPHEAT(HmiInterface *hmi, SaunaController *sauna) {
-    sauna->stopSauna(hmi);
+    sauna->stopSauna();
 }
 
 
