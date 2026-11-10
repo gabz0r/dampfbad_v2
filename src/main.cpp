@@ -20,6 +20,8 @@ SaunaController *sauna;
 
 AsyncWebServer server(80);
 
+bool webServerStarted = false;
+
 
 void onNetworkScanResult(std::vector<std::string> networks);
 void onNetworkConnectResult(std::string ssid, bool success);
@@ -61,8 +63,10 @@ void loop() {
 
   processSerial();
 
-  ElegantOTA.loop();
-  WebSerial.loop();
+  if(webServerStarted) {
+    ElegantOTA.loop();
+    WebSerial.loop();
+  }
 }
 
 void onNetworkScanResult(std::vector<std::string> networks) {
@@ -73,8 +77,11 @@ void onNetworkConnectResult(std::string ssid, bool success) {
   if(success) {
     WebSerial.printf("connected to %s\n", ssid.c_str());
     HmiWorker::ext_CONNECTED(hmi);
-    initOTA();
-    WebSerial.begin(&server);
+    if(!webServerStarted) {
+      initOTA();
+      WebSerial.begin(&server);
+      webServerStarted = true;
+    }
 
   } else {
     WebSerial.println("connect failed");
